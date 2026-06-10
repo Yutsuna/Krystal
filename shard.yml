@@ -1,0 +1,13 @@
+name: krystal
+version: 0.1.0
+
+authors:
+  - Yutsuna <leo.quinzler@epitech.eu>
+
+targets:
+  krystal:
+    main: src/krystal.cr
+
+crystal: '>= 1.20.2'
+
+license: MIT
