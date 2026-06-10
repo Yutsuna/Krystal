@@ -1,5 +1,5 @@
 require "./Krystal/Tools/**"
 require "./Krystal/Config/**"
+require "./Krystal/CLI/**"
 
-config = Krystal::FConfig.new
-puts config
+exit( Krystal::CLI.call( ARGV ) )
