@@ -3,9 +3,6 @@ require "file_utils"
 module Krystal
 
 
-  record FBuildStatus, success? : Bool, exit_code : Int32
-
-
   class FBuilder
 
     @config       : FConfig
@@ -25,7 +22,7 @@ module Krystal
     #--------------------------------------------------------------------------
 
     def call : Int32
-      total = FStopWatch.new
+      total = FWatcher.new
       FLog.log "Krystal Builder — #{@config.nprocs} cores detected"
 
       digest = compute_digest
@@ -51,20 +48,20 @@ module Krystal
 
     private def compute_digest : String?
       FLog.step "Scanning sources (#{@config.src_dir}/#{@config.source_glob})..."
-      files, scan_sw = FStopWatch.measure { @scanner.files }
+      files, scan_sw = FWatcher.measure { @scanner.files }
 
       if files.empty?
         FLog.error "No source files found in #{@config.src_dir.inspect}."
         return nil
       end
 
-      digest, hash_sw = FStopWatch.measure { @scanner.digest( files ) }
+      digest, hash_sw = FWatcher.measure { @scanner.digest( files ) }
       workers_used = { @config.hash_workers, files.size }.min
 
       FLog.info "  #{files.size} files scanned in #{scan_sw.elapsed_human} " \
                 "SHA256 hash in #{hash_sw.elapsed_human} " \
                 "(#{workers_used} workers)"
-      FLog.info "  global hash: #{digest[ 0, 16 ]}…"
+      FLog.info "  global hash: #{digest[ 0, 16 ]}..."
       digest
     end
 
@@ -74,7 +71,7 @@ module Krystal
       return false if @force
 
       if cached = @cache.read
-        cached.hash == digest && File.executable?( @config.binary_path )
+        cached.hash == digest && File::Info.executable?( @config.binary_path )
       else
         false
       end
@@ -82,7 +79,7 @@ module Krystal
 
     #--------------------------------------------------------------------------
 
-    private def finish_cached ( total : FStopWatch ) : Int32
+    private def finish_cached ( total : FWatcher ) : Int32
       FLog.ok "Cache: No sources changed, binary reused " \
               "(#{@config.binary_path}) in #{total.elapsed_human} ⚡"
       return run_binary if @run_after
@@ -119,7 +116,7 @@ module Krystal
       FLog.step "Compiling: #{cmd.join( " " )}"
       FLog.info "  CRYSTAL_CACHE_DIR=#{env[ "CRYSTAL_CACHE_DIR" ]} (reusing .o files)"
 
-      status, compile_sw = FStopWatch.measure { stream_subprocess( env, cmd ) }
+      status, compile_sw = FWatcher.measure { stream_subprocess( env, cmd ) }
 
       if status.success?
         FLog.ok "Compilation + linking phase: #{compile_sw.elapsed_human}"
@@ -187,21 +184,23 @@ module Krystal
       stderr_writer.close
 
       stderr_buffer = IO::Memory.new
+      stdout_done   = Channel(Nil).new
+      stderr_done   = Channel(Nil).new
 
       stdout_fiber = spawn do
-        stdout_reader.each_line do | line |
-          FLog.command "  #{line}"
-        end
+        stdout_reader.each_line { |line| FLog.command "  #{line}" }
+        stdout_done.send(nil)
       end
 
       stderr_fiber = spawn do
-        stderr_reader.each_line { | line | stderr_buffer.puts line }
+        stderr_reader.each_line { |line| stderr_buffer.puts line }
+        stderr_done.send(nil)
       end
 
       status = process.wait
 
-      stdout_fiber.join rescue nil
-      stderr_fiber.join rescue nil
+      stdout_done.receive
+      stderr_done.receive
 
       puts ""
 
