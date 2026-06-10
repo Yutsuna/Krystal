@@ -71,18 +71,20 @@ module Krystal
       end
 
       private def parse_options! : Array(String)
-        parser = OptionParser.new do | opts |
+        parser = OptionParser.new do |opts|
           opts.banner = "Usage: krystal [options] [-- crystal args]"
 
           bind_options!( opts )
 
-          opts.on( "-h", "--help", "Show help context" ) do
+          opts.on("-h", "--help", "Show help context") do
             puts opts
             exit 0
           end
         end
 
-        parser.parse( @argv )
+        argv_clone = @argv.clone
+        parser.parse(argv_clone)
+        argv_clone
       end
 
       private def apply_remaining! ( remaining : Array(String) ) : Nil
@@ -99,7 +101,9 @@ module Krystal
           @config.binary_name = File.basename( path )
         end
 
-        @config.entrypoint = @entrypoint if @entrypoint
+        if entrypoint = @entrypoint
+          @config.entrypoint = entrypoint
+        end
       end
 
       private def execute_builder : Int32
