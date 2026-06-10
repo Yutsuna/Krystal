@@ -6,6 +6,7 @@ module Krystal
     GREEN   = "\e[32m"
     YELLOW  = "\e[33m"
     CYAN    = "\e[36m"
+    BLUE    = "\e[34m"
     GREY    = "\e[90m"
     BOLD    = "\e[1m"
     RESET   = "\e[0m"
@@ -39,7 +40,7 @@ module Krystal
     end
 
     def step ( message  : String )
-      log message, "  >>  ",    EAnsiColor::CYAN
+      log message, "  >>  ",    EAnsiColor::BLUE
     end
 
     def info ( message  : String )
