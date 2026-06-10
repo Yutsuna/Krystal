@@ -6,8 +6,13 @@ authors:
 
 targets:
   krystal:
-    main: src/krystal.cr
+    main: "Source/Krystal.cr"
 
-crystal: '>= 1.20.2'
+krystal:
+  extra_args:
+    - "--progress"
+    - "--stats"
+
+crystal: ">= 1.20.2"
 
 license: MIT

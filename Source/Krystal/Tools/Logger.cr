@@ -39,7 +39,7 @@ module Krystal
     end
 
     def step ( message  : String )
-      log message, "  >>  ",    EAnsiColor::GREY
+      log message, "  >>  ",    EAnsiColor::CYAN
     end
 
     def info ( message  : String )
