@@ -5,7 +5,7 @@ module Krystal
 
   class FCacheStore
 
-    getter @path : String
+    getter path : String
 
     #--------------------------------------------------------------------------
 
