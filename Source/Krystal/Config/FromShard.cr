@@ -29,13 +29,15 @@ module Krystal
 
     #--------------------------------------------------------------------------
 
-    protected def detect_targets ( yaml : YAML::Any ) : Nil
-      if targets = yaml[ "targets" ]?.try( &.as_h? )
-        if first_target_name = targets.keys.first?.try( &.as_s? )
+    protected def detect_targets(yaml : YAML::Any) : Nil
+      if targets = yaml["targets"]?.try(&.as_h?)
+        if first_target_name = targets.keys.first?.try(&.as_s?)
           @binary_name = first_target_name
-          if main_file = targets[ first_target_name ]?[ "main" ]?.try( &.as_s? )
-            @entrypoint = main_file
-            @src_dir    = File.dirname( main_file )
+          if target = targets[first_target_name]?
+            if main_file = target["main"]?.try(&.as_s?)
+              @entrypoint = main_file
+              @src_dir = File.dirname(main_file)
+            end
           end
         end
       end

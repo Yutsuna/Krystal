@@ -13,32 +13,44 @@ module Krystal
 
     #--------------------------------------------------------------------------
 
-    @src_dir      : String        = "src"
-    @source_glob  : String        = "**/*.cr"
-    @entrypoint   : String        = "main.cr"
-    @manifests    : Array(String) = ["shard.yml", "shard.lock"]
+    property src_dir      : String        = "src"
+    property source_glob  : String        = "**/*.cr"
+    property entrypoint   : String        = "main.cr"
+    property manifests    : Array(String) = ["shard.yml", "shard.lock"]
 
     #--------------------------------------------------------------------------
 
-    @output_dir   : String        = "bin"
-    @binary_name  : String        = File.basename( Dir.current )
+    property output_dir   : String        = "bin"
+    property binary_name  : String        = File.basename( Dir.current )
 
     #--------------------------------------------------------------------------
 
-    @cache_dir    : String        = ".KrystalCache/"
-    @cache_file   : String        = ".KrystalCache/Cache.json"
+    property cache_dir    : String        = ".KrystalCache/"
+    property cache_file   : String        = ".KrystalCache/Cache.json"
 
     #--------------------------------------------------------------------------
 
-    @nprocs        : UInt32       = System.cpu_count.to_u32
-    @hash_workers  : UInt32       = System.cpu_count.to_u32
+    property nprocs        : UInt32       = System.cpu_count.to_u32
+    property hash_workers  : UInt32       = System.cpu_count.to_u32
 
     #--------------------------------------------------------------------------
 
-    @crystal_bin  : String        = "crystal"
-    @mold_bin     : String        = "mold"
-    @build_mode   : EBuildMode    = EBuildMode::Release
-    @extra_args   : Array(String) = [] of String
+    property crystal_bin  : String        = "crystal"
+    property mold_bin     : String        = "mold"
+    property build_mode   : EBuildMode    = EBuildMode::Release
+    property extra_args   : Array(String) = [] of String
+
+    #--------------------------------------------------------------------------
+
+    def binary_path : String
+          File.join( output_dir, binary_name )
+    end
+
+    #--------------------------------------------------------------------------
+
+    def fingerprint : String
+      [ entrypoint, build_mode.to_s, extra_args, Crystal::VERSION ].inspect
+    end
 
     #--------------------------------------------------------------------------
 
