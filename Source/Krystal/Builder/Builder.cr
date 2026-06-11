@@ -23,7 +23,7 @@ module Krystal
 
     def call : Int32
       total = FWatcher.new
-      FLog.log "Krystal Builder — #{@config.nprocs} cores detected"
+      FLog.log "Krystal Builder — #{@config.nprocs} cores | mode: #{@config.build_mode}"
 
       digest = compute_digest
       return 1 if digest.nil?
@@ -114,7 +114,7 @@ module Krystal
       env = build_env
 
       FLog.step "Compiling: #{cmd.join( " " )}"
-      FLog.info "  CRYSTAL_CACHE_DIR=#{env[ "CRYSTAL_CACHE_DIR" ]} (reusing .o files)"
+      FLog.info "  CRYSTAL_CACHE_DIR=#{env[ "CRYSTAL_CACHE_DIR" ]} CRYSTAL_WORKERS=#{env[ "CRYSTAL_WORKERS" ]}"
 
       status, compile_sw = FWatcher.measure { stream_subprocess( env, cmd ) }
 
@@ -134,12 +134,23 @@ module Krystal
         "-o", @config.binary_path,
         "--threads", @config.nprocs.to_s,
         "--progress", "--stats",
+        "--no-debug",
       ]
-      cmd << "--release" if @config.build_mode == EBuildMode::Release
+
+      cmd.concat( optimization_flags )
       cmd.concat( linker_flags )
       cmd.concat( @config.extra_args )
       cmd.concat( @passthrough )
       cmd
+    end
+
+    private def optimization_flags : Array(String)
+      case @config.build_mode
+      in EBuildMode::Release  then [ "--release" ]
+      in EBuildMode::Fast     then [ "-O3" ]
+      in EBuildMode::Balanced then [ "-O2" ]
+      in EBuildMode::Debug    then [] of String
+      end
     end
 
     #--------------------------------------------------------------------------
@@ -147,11 +158,10 @@ module Krystal
     private def linker_flags : Array(String)
       mold = FToolchain.which( @config.mold_bin )
       if mold
-        FLog.step "Linker: mold detected (#{mold}) — multi-threaded linking x#{@config.nprocs}"
+        FLog.step "Linker: mold (#{mold}) — #{@config.nprocs} threads"
         [ "--link-flags", "-fuse-ld=mold -Wl,--thread-count=#{@config.nprocs}" ]
       else
-        FLog.warn "mold not found — falling back to the system linker (ld). " \
-                  "Install mold to speed up linking."
+        FLog.warn "Linker: mold not found, falling back to system linker (ld)"
         [] of String
       end
     end
@@ -159,7 +169,10 @@ module Krystal
     #--------------------------------------------------------------------------
 
     private def build_env : Hash(String, String)
-      { "CRYSTAL_CACHE_DIR" => @config.cache_dir }
+      {
+        "CRYSTAL_CACHE_DIR" => @config.cache_dir,
+        "CRYSTAL_WORKERS"   => @config.nprocs.to_s,
+      }
     end
 
     #--------------------------------------------------------------------------
@@ -187,12 +200,12 @@ module Krystal
       stdout_done   = Channel(Nil).new
       stderr_done   = Channel(Nil).new
 
-      stdout_fiber = spawn do
+      spawn do
         stdout_reader.each_line { |line| FLog.command "  #{line}" }
         stdout_done.send(nil)
       end
 
-      stderr_fiber = spawn do
+      spawn do
         stderr_reader.each_line { |line| stderr_buffer.puts line }
         stderr_done.send(nil)
       end
@@ -219,7 +232,7 @@ module Krystal
     private def report_compiler_errors ( buffer : String ) : Nil
       FLog.error "Crystal compiler output:"
       buffer.each_line do | line |
-        STDERR.puts "  #{EAnsiColor::RED}│#{EAnsiColor::RESET} #{line}"
+        STDERR.puts "  #{EAnsiColor::RED}╎#{EAnsiColor::RESET} #{line}"
       end
       STDERR.flush
     end
