@@ -2,8 +2,10 @@ module Krystal
 
 
   enum EBuildMode
-    Release
-    Debug
+    Release     #-- production
+    Fast        #-- -O3 multi-module
+    Balanced    #-- -O2
+    Debug       #-- development
   end
 
 
@@ -37,7 +39,7 @@ module Krystal
 
     property crystal_bin  : String        = "crystal"
     property mold_bin     : String        = "mold"
-    property build_mode   : EBuildMode    = EBuildMode::Release
+    property build_mode   : EBuildMode    = EBuildMode::Fast
     property extra_args   : Array(String) = [] of String
 
     #--------------------------------------------------------------------------
