@@ -35,7 +35,8 @@ module Krystal
         force:      { Bool,    "-f",      "--force",           "Bypass cache and force recompilation",        false },
         run_after:  { Bool,    "-x",      "--run",             "Execute binary after successful compilation", false },
         entrypoint: { String?, "-e PATH", "--entrypoint PATH", "Specify main entrypoint file",                nil   },
-        output:     { String?, "-o PATH", "--output PATH",     "Specify binary path or name",                 nil   }
+        output:     { String?, "-o PATH", "--output PATH",     "Specify binary path or name",                 nil   },
+        spec:       { Bool,    "-s",      "--spec",            "Compile and run unit tests (specs)",          false }
       )
 
       #--------------------------------------------------------------------------
@@ -96,9 +97,19 @@ module Krystal
       private def apply_overrides! : Nil
         @config.build_mode = EBuildMode::Release if @release
 
+        if @spec
+          @config.spec_mode = true
+          @config.cache_file = @config.spec_cache_file
+          @run_after = true
+        end
+
         if path = @output
-          @config.output_dir  = File.dirname( path )
-          @config.binary_name = File.basename( path )
+          @config.output_dir = File.dirname( path )
+          if @spec
+            @config.spec_binary_name = File.basename( path )
+          else
+            @config.binary_name = File.basename( path )
+          end
         end
 
         if entrypoint = @entrypoint

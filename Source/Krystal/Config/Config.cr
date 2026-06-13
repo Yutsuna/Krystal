@@ -44,14 +44,27 @@ module Krystal
 
     #--------------------------------------------------------------------------
 
+    property spec_dir         : String        = Dir.exists?( "Spec" ) ? "Spec" : "spec"
+    property spec_glob        : String        = "**/*.cr"
+    property spec_binary_name : String        = "specs"
+    property spec_cache_file  : String        = ".KrystalCache/Cache.spec.json"
+    property? spec_mode       : Bool          = false
+
+    #--------------------------------------------------------------------------
+
     def binary_path : String
-          File.join( output_dir, binary_name )
+      if @spec_mode
+        File.join( output_dir, spec_binary_name )
+      else
+        File.join( output_dir, binary_name )
+      end
     end
 
     #--------------------------------------------------------------------------
 
     def fingerprint : String
-      [ entrypoint, build_mode.to_s, extra_args, Crystal::VERSION ].inspect
+      ep = @spec_mode ? "spec_runner.cr" : entrypoint
+      [ ep, build_mode.to_s, extra_args, Crystal::VERSION ].inspect
     end
 
     #--------------------------------------------------------------------------

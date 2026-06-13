@@ -16,6 +16,10 @@ module Krystal
 
     def files : Array(String)
       sources   = Dir.glob( File.join( @config.src_dir, @config.source_glob ) ).select { | path | File.file?( path ) }
+      if @config.spec_mode?
+        specs = Dir.glob( File.join( @config.spec_dir, @config.spec_glob ) ).select { | path | File.file?( path ) }
+        sources += specs
+      end
       manifests = @config.manifests.select { | path | File.file?( path ) }
       ( sources + manifests ).sort
     end

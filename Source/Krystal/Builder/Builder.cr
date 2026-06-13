@@ -110,7 +110,16 @@ module Krystal
       Dir.mkdir_p( @config.output_dir )
       Dir.mkdir_p( @config.cache_dir )
 
-      cmd = build_command
+      entrypoint = if @config.spec_mode?
+                     spec_files = Dir.glob( File.join( @config.spec_dir, @config.spec_glob ) )
+                                     .select { | path | File.file?( path ) }
+                                     .reject { | path | File.basename( path ) == "spec_helper.cr" }
+                     generate_spec_runner( spec_files.sort )
+                   else
+                     @config.entrypoint
+                   end
+
+      cmd = build_command( entrypoint )
       env = build_env
 
       FLog.step "Compiling: #{cmd.join( " " )}"
@@ -128,9 +137,27 @@ module Krystal
 
     #--------------------------------------------------------------------------
 
-    private def build_command : Array(String)
+    private def generate_spec_runner ( spec_files : Array(String) ) : String
+      Dir.mkdir_p( @config.cache_dir )
+      runner_path = File.join( @config.cache_dir, "spec_runner.cr" )
+
+      File.open( runner_path, "w" ) do | file |
+        file.puts "require \"spec\""
+        spec_files.each do | spec_file |
+          rel_path = Path[ spec_file ].expand.relative_to( Path[ @config.cache_dir ].expand ).to_s
+          rel_path = "./" + rel_path unless rel_path.starts_with?( '.' )
+          file.puts "require #{rel_path.inspect}"
+        end
+      end
+
+      runner_path
+    end
+
+    #--------------------------------------------------------------------------
+
+    private def build_command ( entrypoint : String ) : Array(String)
       cmd = [
-        @config.crystal_bin, "build", @config.entrypoint,
+        @config.crystal_bin, "build", entrypoint,
         "-o", @config.binary_path,
         "--threads", @config.nprocs.to_s,
         "--progress", "--stats",
