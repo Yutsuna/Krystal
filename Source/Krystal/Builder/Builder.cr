@@ -244,8 +244,9 @@ module Krystal
 
       puts ""
 
-      unless status.success?
-        report_compiler_errors( stderr_buffer.to_s )
+      stderr_output = stderr_buffer.to_s
+      unless stderr_output.strip.empty?
+        report_compiler_output( stderr_output, !status.success? )
       end
 
       FBuildStatus.new( status.success?, status.exit_code )
@@ -256,10 +257,17 @@ module Krystal
 
     #--------------------------------------------------------------------------
 
-    private def report_compiler_errors ( buffer : String ) : Nil
-      FLog.error "Crystal compiler output:"
+    private def report_compiler_output ( buffer : String, is_error : Bool ) : Nil
+      if is_error
+        FLog.error "Crystal compiler errors:"
+        color = EAnsiColor::RED
+      else
+        FLog.warn "Crystal compiler warnings:"
+        color = EAnsiColor::YELLOW
+      end
+
       buffer.each_line do | line |
-        STDERR.puts "  #{EAnsiColor::RED}╎#{EAnsiColor::RESET} #{line}"
+        STDERR.puts "  #{color}╎#{EAnsiColor::RESET} #{line}"
       end
       STDERR.flush
     end
