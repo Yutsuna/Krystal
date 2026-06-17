@@ -161,8 +161,8 @@ module Krystal
         "-o", @config.binary_path,
         "--threads", @config.nprocs.to_s,
         "--progress", "--stats",
-        "--no-debug",
       ]
+      cmd << "--no-debug" unless @config.build_mode == EBuildMode::Debug
 
       cmd.concat( optimization_flags )
       cmd.concat( linker_flags )
