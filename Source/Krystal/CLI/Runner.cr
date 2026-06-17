@@ -31,12 +31,14 @@ module Krystal
       end
 
       declare_options(
-        release:    { Bool,    "-r",      "--release",         "Compile in optimized Release mode",           false },
-        force:      { Bool,    "-f",      "--force",           "Bypass cache and force recompilation",        false },
-        run_after:  { Bool,    "-x",      "--run",             "Execute binary after successful compilation", false },
-        entrypoint: { String?, "-e PATH", "--entrypoint PATH", "Specify main entrypoint file",                nil   },
-        output:     { String?, "-o PATH", "--output PATH",     "Specify binary path or name",                 nil   },
-        spec:       { Bool,    "-s",      "--spec",            "Compile and run unit tests (specs)",          false }
+        release:    { Bool,    "-r",      "--release",         "Compile in optimized Release mode (production)", false },
+        fast:       { Bool,    "-R",      "--fast",            "Compile in optimized fast mode (-03, default)",  false },
+        debug:      { Bool,    "-d",      "--debug",           "Compile in Debug mode (development)",            false },
+        force:      { Bool,    "-f",      "--force",           "Bypass cache and force recompilation",           false },
+        run_after:  { Bool,    "-x",      "--run",             "Execute binary after successful compilation",    false },
+        entrypoint: { String?, "-e PATH", "--entrypoint PATH", "Specify main entrypoint file",                   nil   },
+        output:     { String?, "-o PATH", "--output PATH",     "Specify binary path or name",                    nil   },
+        spec:       { Bool,    "-s",      "--spec",            "Compile and run unit tests (specs)",             false }
       )
 
       #--------------------------------------------------------------------------
@@ -81,21 +83,35 @@ module Krystal
             puts opts
             exit 0
           end
+
+          opts.invalid_option do | flag |
+            FLog.error "Unknown option: #{flag}"
+            exit 1
+          end
         end
 
         argv_clone = @argv.clone
-        parser.parse(argv_clone)
+        parser.parse( argv_clone )
         argv_clone
       end
 
       private def apply_remaining! ( remaining : Array(String) ) : Nil
-        if remaining.first? && File.file?( remaining.first )
-          @entrypoint = remaining.first
+        first = remaining.first?
+        return unless first
+
+        if File.file?( first )
+          @entrypoint = first
+          @fast = true unless @release || @fast || @debug
+        else
+          FLog.error "File not found: #{first.inspect}"
+          exit 1
         end
       end
 
       private def apply_overrides! : Nil
         @config.build_mode = EBuildMode::Release if @release
+        @config.build_mode = EBuildMode::Fast    if @fast
+        @config.build_mode = EBuildMode::Debug   if @debug
 
         if @spec
           @config.spec_mode = true
