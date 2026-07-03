@@ -4,6 +4,7 @@
 /.shards/
 *.dwarf
 .*
+!.envrc
 !.gitignore
 !.editorconfig
 Krystal

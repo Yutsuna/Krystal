@@ -28,33 +28,10 @@
           ...
         }:
         {
-          packages.default =
-            with pkgs;
-            crystal.buildCrystalPackage {
-              pname = "krystal";
-              version = "0.1.0";
-              src = ./.;
-              format = "shards";
-              shardsRepo = null;
-              buildTargets = [ "Source/Krystal.cr" ];
-
-              nativeBuildInputs = [ makeWrapper ];
-
-              postInstall = ''
-                wrapProgram $out/bin/krystal \
-                  --prefix PATH : ${lib.makeBinPath [ crystal ]}
-              '';
-            };
-
-          devShells.default =
-            with pkgs;
-            mkShell {
-              packages = [
-                crystal
-                shards
-                config.packages.default
-              ];
-            };
+          packages.default = pkgs.callPackage ./Nix/Package.nix { };
+          devShells.default = pkgs.callPackage ./Nix/Shell.nix {
+            krystal = config.packages.default;
+          };
         };
     };
 }
