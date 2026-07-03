@@ -24,6 +24,7 @@
       perSystem =
         {
           pkgs,
+          config,
           ...
         }:
         {
@@ -36,13 +37,22 @@
               format = "shards";
               shardsRepo = null;
               buildTargets = [ "Source/Krystal.cr" ];
+
+              nativeBuildInputs = [ makeWrapper ];
+
+              postInstall = ''
+                wrapProgram $out/bin/krystal \
+                  --prefix PATH : ${lib.makeBinPath [ crystal ]}
+              '';
             };
+
           devShells.default =
             with pkgs;
             mkShell {
-              packages = with pkgs; [
+              packages = [
                 crystal
                 shards
+                config.packages.default
               ];
             };
         };
