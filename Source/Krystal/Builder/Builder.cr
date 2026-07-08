@@ -25,16 +25,22 @@ module Krystal
       total = FWatcher.new
       FLog.log "Krystal Builder — #{@config.nprocs} cores | mode: #{@config.build_mode}"
 
-      digest = compute_digest
-      return 1 if digest.nil?
+      digests = compute_digest
+      return 1 if digests.nil?
+      sources_digest, manifests_digest = digests
 
-      if cache_hit?( digest )
+      if cache_hit?( sources_digest, manifests_digest )
         return finish_cached( total )
+      end
+
+      if @config.run_before.any?
+        status = run_before
+        return status.exit_code unless status.success?
       end
 
       status = compile
       if status.success?
-        persist_cache( digest )
+        persist_cache( sources_digest, manifests_digest )
         FLog.ok "Build completed in #{total.elapsed_human} -> #{@config.binary_path}"
         return run_binary if @run_after
         0
@@ -46,7 +52,7 @@ module Krystal
 
     #--------------------------------------------------------------------------
 
-    private def compute_digest : String?
+    private def compute_digest : {String, String}?
       FLog.step "Scanning sources (#{@config.src_dir}/#{@config.source_glob})..."
       files, scan_sw = FWatcher.measure { @scanner.files }
 
@@ -55,23 +61,25 @@ module Krystal
         return nil
       end
 
-      digest, hash_sw = FWatcher.measure { @scanner.digest( files ) }
+      sources_digest, hash_sw = FWatcher.measure { @scanner.sources_digest }
+      manifests_digest, manifest_hash_sw = FWatcher.measure { @scanner.manifests_digest }
       workers_used = { @config.hash_workers, files.size }.min
 
       FLog.info "  #{files.size} files scanned in #{scan_sw.elapsed_human} " \
                 "SHA256 hash in #{hash_sw.elapsed_human} " \
                 "(#{workers_used} workers)"
-      FLog.info "  global hash: #{digest[ 0, 16 ]}..."
-      digest
+      FLog.info "  sources hash: #{sources_digest[ 0, 16 ]}..."
+      FLog.info "  manifests hash: #{manifests_digest[ 0, 16 ]}..."
+      {sources_digest, manifests_digest}
     end
 
     #--------------------------------------------------------------------------
 
-    private def cache_hit? ( digest : String ) : Bool
+    private def cache_hit? ( sources_digest : String, manifests_digest : String ) : Bool
       return false if @force
 
       if cached = @cache.read
-        cached.hash == digest && File::Info.executable?( @config.binary_path )
+        cached.sources_hash == sources_digest && cached.manifests_hash == manifests_digest && File::Info.executable?( @config.binary_path )
       else
         false
       end
@@ -88,9 +96,10 @@ module Krystal
 
     #--------------------------------------------------------------------------
 
-    private def persist_cache ( digest : String ) : Nil
+    private def persist_cache ( sources_digest : String, manifests_digest : String ) : Nil
       data = FCacheData.new(
-        hash:             digest,
+        sources_hash:     sources_digest,
+        manifests_hash:   manifests_digest,
         binary:           @config.binary_path,
         build_mode:       @config.build_mode,
         built_at:         Time.utc.to_rfc3339,
@@ -133,6 +142,17 @@ module Krystal
         FLog.error "Compilation failed: #{compile_sw.elapsed_human}"
       end
       status
+    end
+
+    #--------------------------------------------------------------------------
+
+    private def run_before : FBuildStatus
+      FLog.step "Running before hooks"
+      @config.run_before.each do | hook |
+        FLog.info "  #{hook}"
+        return FBuildStatus.new( false, 1 ) unless system( hook )
+      end
+      FBuildStatus.new( true, 0 )
     end
 
     #--------------------------------------------------------------------------
