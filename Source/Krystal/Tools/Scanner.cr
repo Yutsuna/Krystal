@@ -26,6 +26,23 @@ module Krystal
 
     #--------------------------------------------------------------------------
 
+    def source_files : Array(String)
+      sources   = Dir.glob( File.join( @config.src_dir, @config.source_glob ) ).select { | path | File.file?( path ) }
+      if @config.spec_mode?
+        specs = Dir.glob( File.join( @config.spec_dir, @config.spec_glob ) ).select { | path | File.file?( path ) }
+        sources += specs
+      end
+      sources.sort
+    end
+
+    #--------------------------------------------------------------------------
+
+    def manifest_files : Array(String)
+      @config.manifests.select { | path | File.file?( path ) }
+    end
+
+    #--------------------------------------------------------------------------
+
     def digest(file_list : Array(String)) : String
       workers_count = { @config.hash_workers, file_list.size }.min.clamp(1, 64)
 
@@ -71,6 +88,28 @@ module Krystal
       reducer.update( @config.fingerprint )
       results.each { |h| reducer.update(h) }
       reducer.hexfinal
+    end
+
+    #--------------------------------------------------------------------------
+
+    def sources_digest : String
+      files = source_files
+      if files.empty?
+        ""
+      else
+        digest( files )
+      end
+    end
+
+    #--------------------------------------------------------------------------
+
+    def manifests_digest : String
+      files = manifest_files
+      if files.empty?
+        ""
+      else
+        digest( files )
+      end
     end
 
     #--------------------------------------------------------------------------
