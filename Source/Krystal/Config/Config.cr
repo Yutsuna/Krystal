@@ -15,6 +15,10 @@ module Krystal
 
     #--------------------------------------------------------------------------
 
+    property run_before   : Array(String) = [] of String
+
+    #--------------------------------------------------------------------------
+
     property src_dir      : String        = "src"
     property source_glob  : String        = "**/*.cr"
     property entrypoint   : String        = "main.cr"
