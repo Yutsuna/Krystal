@@ -18,6 +18,10 @@ crystal.buildCrystalPackage {
     mold
   ];
 
+  preCheck = ''
+    export HOME=$(mktemp -d)
+  '';
+
   postInstall = ''
     wrapProgram $out/bin/krystal \
       --prefix PATH : ${
